@@ -535,9 +535,9 @@ int main(int argc, const char *argv[])
 #ifdef USEWIN32IOAPI
         zlib_filefunc64_def ffunc;
         fill_win32_filefunc64A(&ffunc);
-        uf = unzOpen2_64(zipfilename, &ffunc);
+        uf = unzOpen2_64(zipfilename, &ffunc, NULL );
 #else
-        uf = unzOpen64(zipfilename);
+        uf = unzOpen64(zipfilename, NULL);
 #endif
     }
 

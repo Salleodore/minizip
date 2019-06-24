@@ -394,7 +394,7 @@ local ZPOS64_T unz64local_SearchCentralDir64(const zlib_filefunc64_32_def* pzlib
     return offset;
 }
 
-local unzFile unzOpenInternal(const void *path, zlib_filefunc64_32_def* pzlib_filefunc64_32_def)
+local unzFile unzOpenInternal(const void *path, zlib_filefunc64_32_def* pzlib_filefunc64_32_def, int* out_err )
 {
     unz64_s us;
     unz64_s *s;
@@ -407,7 +407,12 @@ local unzFile unzOpenInternal(const void *path, zlib_filefunc64_32_def* pzlib_fi
     int err = UNZ_OK;
 
     if (unz_copyright[0]!=' ')
-        return NULL;
+	{
+		if (out_err)
+			*out_err = -10000;
+
+		return NULL;
+	}
 
     us.filestream = NULL;
     us.filestream_with_CD = NULL;
@@ -421,7 +426,12 @@ local unzFile unzOpenInternal(const void *path, zlib_filefunc64_32_def* pzlib_fi
     us.filestream = ZOPEN64(us.z_filefunc, path, ZLIB_FILEFUNC_MODE_READ | ZLIB_FILEFUNC_MODE_EXISTING);
 
     if (us.filestream == NULL)
+	{
+		if (out_err)
+			*out_err = -10001;
+
         return NULL;
+	}
 
     us.filestream_with_CD = us.filestream;
     us.isZip64 = 0;
@@ -523,6 +533,9 @@ local unzFile unzOpenInternal(const void *path, zlib_filefunc64_32_def* pzlib_fi
 
     if (err != UNZ_OK)
     {
+		if (out_err)
+			*out_err = err;
+
         ZCLOSE64(us.z_filefunc, us.filestream);
         return NULL;
     }
@@ -550,21 +563,27 @@ local unzFile unzOpenInternal(const void *path, zlib_filefunc64_32_def* pzlib_fi
         *s = us;
         unzGoToFirstFile((unzFile)s);
     }
+	else
+	{
+		if (out_err)
+			*out_err = -10002;
+	}
+
     return (unzFile)s;
 }
 
-extern unzFile ZEXPORT unzOpen2(const char *path, zlib_filefunc_def* pzlib_filefunc32_def)
+extern unzFile ZEXPORT unzOpen2(const char *path, zlib_filefunc_def* pzlib_filefunc32_def, int* outErr)
 {
     if (pzlib_filefunc32_def != NULL)
     {
         zlib_filefunc64_32_def zlib_filefunc64_32_def_fill;
         fill_zlib_filefunc64_32_def_from_filefunc32(&zlib_filefunc64_32_def_fill, pzlib_filefunc32_def);
-        return unzOpenInternal(path, &zlib_filefunc64_32_def_fill);
+        return unzOpenInternal(path, &zlib_filefunc64_32_def_fill, outErr );
     }
-    return unzOpenInternal(path, NULL);
+    return unzOpenInternal(path, NULL, outErr);
 }
 
-extern unzFile ZEXPORT unzOpen2_64(const void *path, zlib_filefunc64_def* pzlib_filefunc_def)
+extern unzFile ZEXPORT unzOpen2_64(const void *path, zlib_filefunc64_def* pzlib_filefunc_def, int* outErr)
 {
     if (pzlib_filefunc_def != NULL)
     {
@@ -572,19 +591,19 @@ extern unzFile ZEXPORT unzOpen2_64(const void *path, zlib_filefunc64_def* pzlib_
         zlib_filefunc64_32_def_fill.zfile_func64 = *pzlib_filefunc_def;
         zlib_filefunc64_32_def_fill.ztell32_file = NULL;
         zlib_filefunc64_32_def_fill.zseek32_file = NULL;
-        return unzOpenInternal(path, &zlib_filefunc64_32_def_fill);
+        return unzOpenInternal(path, &zlib_filefunc64_32_def_fill, outErr);
     }
-    return unzOpenInternal(path, NULL);
+    return unzOpenInternal(path, NULL, outErr);
 }
 
-extern unzFile ZEXPORT unzOpen(const char *path)
+extern unzFile ZEXPORT unzOpen(const char *path, int* outErr)
 {
-    return unzOpenInternal(path, NULL);
+    return unzOpenInternal(path, NULL, NULL);
 }
 
-extern unzFile ZEXPORT unzOpen64(const void *path)
+extern unzFile ZEXPORT unzOpen64(const void *path, int* outErr)
 {
-    return unzOpenInternal(path, NULL);
+    return unzOpenInternal(path, NULL, outErr);
 }
 
 extern int ZEXPORT unzClose(unzFile file)
